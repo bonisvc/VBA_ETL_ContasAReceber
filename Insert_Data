@@ -1,0 +1,72 @@
+'''Criando uma macro para preencher automaticamente os dados da planilha de contas a receber
+Sub inserir_dados()
+    Desbloquear
+    '''Verificando o tamanho do range contendo valores na coluna A da Planilha1 e adicionando 2 linha
+    c = contar(Planilha1.Range("A:A")) + 2
+    
+    '''Criando laço iniciando na linha 2 até a quantidade de itens preenchidos da coluna A da Planilha2
+    For i = 2 To contar(Planilha2.Range("A:A")) - 1
+    '''Verificando se o valor já consta na planilha
+        If WorksheetFunction.XLookup(Planilha2.Cells(i, 2).Value, Planilha1.Range("A:A"), _
+                Planilha1.Range("A:A"), 0, 0, 1) = 0 Then
+            With Planilha1
+            '''Célula Nota Fiscal
+            .Cells(c, 1).Value = Planilha2.Cells(i, 2)
+            '''Célula Data de Emissão
+            .Cells(c, 2).Value = Planilha2.Cells(i, 5)
+            '''Célula CPF/CNPJ do Cliente
+            .Cells(c, 3).Value = Planilha2.Cells(i, 27)
+            '''Célula Razão Social do Cliente
+            .Cells(c, 4).Value = Planilha2.Cells(i, 30)
+            '''Célula Cidade de Prestação dos Serviços, concatenando cidade e Estado
+            .Cells(c, 5).Value = Planilha2.Cells(i, 42) & "/" & Planilha2.Cells(i, 43)
+            '''Célula Valor dos Serviços
+            .Cells(c, 6).Value = Planilha2.Cells(i, 50)
+            '''Célula Vencimento
+            '''Analisando se o cliente possui um prazo fixo por contrato
+            verifica_cliente = Procurar_Valor(Planilha1.Cells(i, 4).Value, Planilha3.Range("A:A"), Planilha3.Range("B:B"))
+            '''Se houver prazo fixo, soma o prazo à data de emissão da nota
+            If verifica_cliente > 0 Then
+                .Cells(c, 7) = Planilha2.Cells(i, 5).Value + verifica_cliente
+            '''Se não houver prazo fixo e o vencimento estiver anterior à emissão, soma 30 dias ao vencimento
+            Else
+                .Cells(c, 7) = Planilha2.Cells(i, 5).Value + 30
+            End If
+            End With
+        End If
+        c = c + 1
+    Next
+    
+    '''Após inserir os dados, classificar de acordo com o número da nota fiscal
+    ActiveWorkbook.Worksheets("Contas a Receber").AutoFilter.Sort.SortFields.Clear
+    ActiveWorkbook.Worksheets("Contas a Receber").AutoFilter.Sort.SortFields.Add2 _
+    Key:=Range("A2:A10000"), SortOn:=xlSortOnValues, Order:=xlAscending, _
+    DataOption:=xlSortNormal
+    With ActiveWorkbook.Worksheets("Contas a Receber").AutoFilter.Sort
+        .Header = xlYes
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin
+        .Apply
+    End With
+    
+    '''Selecionar a última linha preenchida da planilha
+    Range("A2").End(xlDown).Select
+    
+    Bloquear
+End Sub
+
+'''Bloquear Planilha, mas permitir edição de intervalos específicos
+Private Sub Bloquear()
+    Planilha1.Range("H3:H10000").Locked = False
+    Planilha1.Range("J3:J10000").Locked = False
+    Planilha1.Range("K3:K10000").Locked = False
+    Planilha1.Range("L3:L10000").Locked = False
+    
+    Planilha1.Protect Password:="Supersan"
+End Sub
+
+'''Desbloquear Planilha
+Private Sub Desbloquear()
+    Planilha1.Unprotect Password:="Supersan"
+End Sub
